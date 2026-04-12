@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dobbelspel Puntenteller</title>
+  <style>
+    :root{
+      --bg:#f4f6f8;
+      --card:#ffffff;
+      --text:#1f2937;
+      --muted:#6b7280;
+      --line:#e5e7eb;
+      --accent:#111827;
+      --accent2:#2563eb;
+      --success:#16a34a;
+      --warn:#f59e0b;
+      --danger:#dc2626;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+    .wrap{
+      max-width:1100px;
+      margin:0 auto;
+      padding:16px;
+    }
+    .card{
+      background:var(--card);
+      border-radius:22px;
+      box-shadow:0 8px 24px rgba(0,0,0,.08);
+      padding:18px;
+      margin-bottom:16px;
+    }
+    h1,h2,h3,p{margin:0}
+    .sub{color:var(--muted); margin-top:6px}
+    .grid{
+      display:grid;
+      gap:14px;
+    }
+    .grid-2{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+    .grid-players{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+    label{
+      display:block;
+      font-weight:600;
+      margin-bottom:6px;
+    }
+    input{
+      width:100%;
+      height:48px;
+      padding:10px 14px;
+      border:1px solid var(--line);
+      border-radius:14px;
+      font-size:18px;
+      background:#fff;
+    }
+    button{
+      border:0;
+      border-radius:16px;
+      padding:14px 18px;
+      font-size:18px;
+      font-weight:700;
+      cursor:pointer;
+    }
+    .btn{
+      background:var(--accent);
+      color:#fff;
+    }
+    .btn-secondary{
+      background:#eef2ff;
+      color:#1e3a8a;
+    }
+    .btn-outline{
+      background:#fff;
+      border:1px solid var(--line);
+      color:var(--text);
+    }
+    .btn-danger{
+      background:#fee2e2;
+      color:#991b1b;
+    }
+    .toolbar{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .badge{
+      display:inline-block;
+      padding:8px 12px;
+      border-radius:999px;
+      background:#eef2ff;
+      color:#1e3a8a;
+      font-size:14px;
+      font-weight:700;
+    }
+    .player-card{
+      border:2px solid transparent;
+      border-radius:22px;
+      padding:16px;
+      background:#fff;
+      box-shadow:0 8px 24px rgba(0,0,0,.06);
+    }
+    .player-card.selected{border-color:#94a3b8}
+    .player-card.winner{
+      border-color:#22c55e;
+      background:#f0fdf4;
+    }
+    .player-name{
+      font-size:28px;
+      font-weight:800;
+      line-height:1.1;
+    }
+    .score{
+      font-size:58px;
+      font-weight:900;
+      margin:10px 0 14px;
+    }
+    .mini-actions{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:8px;
+    }
+    .mini-actions button{
+      padding:14px 8px;
+      font-size:20px;
+    }
+    .layout{
+      display:grid;
+      gap:16px;
+      grid-template-columns:1.6fr .9fr;
+    }
+    .rank-row, .history-row{
+      background:#f8fafc;
+      border-radius:16px;
+      padding:12px 14px;
+    }
+    .rank-row{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      font-size:18px;
+      font-weight:700;
+    }
+    .history{
+      max-height:280px;
+      overflow:auto;
+      display:grid;
+      gap:8px;
+    }
+    .voice-box{
+      background:#f8fafc;
+      border-radius:16px;
+      padding:12px;
+      color:var(--muted);
+      font-size:15px;
+    }
+    .topline{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    .winner-banner{
+      background:#ecfdf5;
+      color:#166534;
+      padding:14px 16px;
+      border-radius:18px;
+      font-size:20px;
+      font-weight:800;
+      margin-bottom:14px;
+    }
+    .hidden{display:none !important}
+    @media (max-width: 860px){
+      .layout{grid-template-columns:1fr}
+      .score{font-size:52px}
+      .player-name{font-size:24px}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section id="setupScreen" class="card">
+      <h1>Dobbelspel puntenteller</h1>
+      <p class="sub">Prototype voor Android telefoon of tablet. Met flexibele spelers, instelbare doelscore en spraakinvoer.</p>
+
+      <div class="grid grid-2" style="margin-top:16px">
+        <div>
+          <label for="playerCount">Aantal spelers</label>
+          <input id="playerCount" type="number" min="1" max="12" value="4" />
+        </div>
+        <div>
+          <label for="targetScore">Te behalen punten</label>
+          <input id="targetScore" type="number" min="1" value="100" />
+        </div>
+      </div>
+
+      <div style="margin-top:16px">
+        <label>Spelers</label>
+        <div id="playerInputs" class="grid grid-players"></div>
+      </div>
+
+      <div class="toolbar" style="margin-top:16px">
+        <button class="btn" id="startBtn">Start spel</button>
+        <span class="badge" id="voiceBadge">Spraak controleren...</span>
+      </div>
+
+      <div class="card" style="margin-top:16px; margin-bottom:0; box-shadow:none; border:1px solid var(--line);">
+        <h3>Voorbeelden steminvoer</h3>
+        <p class="sub" style="margin-top:8px">“Henk plus 5”, “Alie min 3”, “Jannie 12”, “Angela zet op 50”</p>
+      </div>
+    </section>
+
+    <section id="gameScreen" class="hidden">
+      <div id="winnerBanner" class="winner-banner hidden"></div>
+
+      <div class="card">
+        <div class="topline">
+          <div>
+            <h2 id="goalLabel">Doel: 100 punten</h2>
+            <p class="sub">Tik op een speler of gebruik de microfoon.</p>
+          </div>
+          <div class="toolbar">
+            <button class="btn-outline" id="settingsBtn">Instellingen</button>
+            <button class="btn-outline" id="undoBtn">Undo</button>
+            <button class="btn-danger" id="resetBtn">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="layout">
+        <div>
+          <div id="playerCards" class="grid grid-players"></div>
+        </div>
+
+        <div class="grid">
+          <div class="card">
+            <h3>Snelle invoer</h3>
+            <p class="sub" style="margin-top:6px">Geselecteerde speler: <strong id="selectedName">-</strong></p>
+
+            <div style="margin-top:14px">
+              <label for="manualPoints">Punten</label>
+              <input id="manualPoints" type="number" value="5" />
+            </div>
+
+            <div class="grid grid-2" style="margin-top:14px">
+              <button class="btn-outline" id="minusManualBtn">Aftrekken</button>
+              <button class="btn" id="plusManualBtn">Optellen</button>
+            </div>
+
+            <div style="margin-top:14px">
+              <button class="btn-secondary" id="voiceBtn" style="width:100%">Gebruik steminvoer</button>
+              <div class="voice-box" id="voiceStatus" style="margin-top:10px">Zeg bijvoorbeeld: “Henk plus 5”.</div>
+              <div class="voice-box" id="lastHeard" style="margin-top:10px">Laatst gehoord: -</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Stand</h3>
+            <div id="ranking" class="grid" style="margin-top:12px"></div>
+          </div>
+
+          <div class="card">
+            <h3>Laatste acties</h3>
+            <div id="history" class="history" style="margin-top:12px"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    function uid(){ return Math.random().toString(36).slice(2,9); }
+
+    function normalizeText(text){
+      return text.toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/-/g, " ").replace(/\s+/g, " ").trim();
+    }
+
+    function wordToNumber(word){
+      const map = {
+        nul:0, een:1, twee:2, drie:3, vier:4, vijf:5, zes:6, zeven:7, acht:8, negen:9,
+        tien:10, elf:11, twaalf:12, dertien:13, veertien:14, vijftien:15, zestien:16,
+        zeventien:17, achttien:18, negentien:19, twintig:20
+      };
+      return map[word];
+    }
+
+    function extractValue(text){
+      const m = text.match(/-?\d+/);
+      if(m) return Number(m[0]);
+      const words = text.split(" ");
+      for(const w of words){
+        const n = wordToNumber(w);
+        if(n !== undefined) return n;
+      }
+      return null;
+    }
+
+    const state = {
+      targetScore: 100,
+      players: [],
+      selectedPlayerId: null,
+      history: [],
+      winnerId: null,
+      lastVoiceText: "",
+      recognition: null,
+      voiceSupported: false,
+      isListening: false
+    };
+
+    const setupScreen = document.getElementById("setupScreen");
+    const gameScreen = document.getElementById("gameScreen");
+    const playerCountInput = document.getElementById("playerCount");
+    const targetScoreInput = document.getElementById("targetScore");
+    const playerInputsWrap = document.getElementById("playerInputs");
+    const startBtn = document.getElementById("startBtn");
+    const voiceBadge = document.getElementById("voiceBadge");
+    const goalLabel = document.getElementById("goalLabel");
+    const playerCards = document.getElementById("playerCards");
+    const ranking = document.getElementById("ranking");
+    const historyEl = document.getElementById("history");
+    const selectedName = document.getElementById("selectedName");
+    const manualPoints = document.getElementById("manualPoints");
+    const minusManualBtn = document.getElementById("minusManualBtn");
+    const plusManualBtn = document.getElementById("plusManualBtn");
+    const voiceBtn = document.getElementById("voiceBtn");
+    const voiceStatus = document.getElementById("voiceStatus");
+    const lastHeard = document.getElementById("lastHeard");
+    const undoBtn = document.getElementById("undoBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const settingsBtn = document.getElementById("settingsBtn");
+    const winnerBanner = document.getElementById("winnerBanner");
+
+    function makePlayers(count){
+      return Array.from({length:count}, (_,i)=>({
+        id: uid(),
+        name: `Speler ${i+1}`,
+        score: 0
+      }));
+    }
+
+    function renderPlayerInputs(){
+      playerInputsWrap.innerHTML = "";
+      state.players.forEach((p, index)=>{
+        const row = document.createElement("div");
+        row.innerHTML = `
+          <label>Speler ${index+1}</label>
+          <input value="${p.name.replace(/"/g,'&quot;')}" data-id="${p.id}" />
+        `;
+        const input = row.querySelector("input");
+        input.addEventListener("input", (e)=>{
+          p.name = e.target.value;
+        });
+        playerInputsWrap.appendChild(row);
+      });
+    }
+
+    function setSelectedPlayer(id){
+      state.selectedPlayerId = id;
+      renderGame();
+    }
+
+    function evaluateWinner(){
+      const w = state.players.find(p => p.score >= state.targetScore);
+      state.winnerId = w ? w.id : null;
+    }
+
+    function addHistory(text, undoData){
+      state.history.unshift({ id: uid(), text, undoData });
+      renderGame();
+    }
+
+    function applyDelta(playerId, delta, source="Handmatig"){
+      if(state.winnerId) return;
+      const p = state.players.find(x=>x.id===playerId);
+      if(!p) return;
+      const oldScore = p.score;
+      p.score = Math.max(0, p.score + delta);
+      evaluateWinner();
+      addHistory(`${source}: ${p.name} ${delta>=0?'+':''}${delta} (${oldScore} → ${p.score})`, { playerId, delta: -delta });
+    }
+
+    function setScore(playerId, value, source="Stem"){
+      if(state.winnerId) return;
+      const p = state.players.find(x=>x.id===playerId);
+      if(!p) return;
+      const oldScore = p.score;
+      p.score = Math.max(0, value);
+      evaluateWinner();
+      addHistory(`${source}: ${p.name} score gezet (${oldScore} → ${p.score})`, { playerId, setBackTo: oldScore });
+    }
+
+    function parseVoiceCommand(transcript){
+      const text = normalizeText(transcript);
+      const value = extractValue(text);
+      if(value === null) return { ok:false, message:"Ik hoorde geen getal." };
+
+      const matched = [...state.players]
+        .map(p => ({...p, normalized: normalizeText(p.name)}))
+        .sort((a,b)=>b.normalized.length-a.normalized.length)
+        .find(p => text.includes(p.normalized));
+
+      if(!matched) return { ok:false, message:"Ik herkende geen spelersnaam." };
+
+      const isMinus = /(min|minus|eraf|af|verminder)/.test(text);
+      const isSet = /(zet op|set|maak)/.test(text);
+
+      if(isSet){
+        return { ok:true, type:"set", playerId: matched.id, value: Math.max(0, value) };
+      }
+      return { ok:true, type:"add", playerId: matched.id, delta: isMinus ? -Math.abs(value) : Math.abs(value) };
+    }
+
+    function renderGame(){
+      goalLabel.textContent = `Doel: ${state.targetScore} punten`;
+      const selected = state.players.find(p=>p.id===state.selectedPlayerId);
+      selectedName.textContent = selected ? selected.name : "-";
+
+      playerCards.innerHTML = "";
+      state.players.forEach(p=>{
+        const winner = state.winnerId === p.id;
+        const selectedCls = state.selectedPlayerId === p.id ? "selected" : "";
+        const winnerCls = winner ? "winner" : "";
+        const card = document.createElement("div");
+        card.className = `player-card ${selectedCls} ${winnerCls}`;
+        card.innerHTML = `
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+            <div>
+              <div style="color:var(--muted);font-size:16px">Speler</div>
+              <div class="player-name">${p.name}</div>
+            </div>
+            ${winner ? '<span class="badge" style="background:#dcfce7;color:#166534">Winnaar</span>' : ''}
+          </div>
+          <div class="score">${p.score}</div>
+          <div class="mini-actions">
+            <button class="btn-outline" data-action="minus1">-1</button>
+            <button class="btn" data-action="plus1">+1</button>
+            <button class="btn-secondary" data-action="plus5">+5</button>
+          </div>
+        `;
+        card.addEventListener("click", ()=>setSelectedPlayer(p.id));
+        card.querySelector('[data-action="minus1"]').addEventListener("click", (e)=>{ e.stopPropagation(); applyDelta(p.id, -1); });
+        card.querySelector('[data-action="plus1"]').addEventListener("click", (e)=>{ e.stopPropagation(); applyDelta(p.id, 1); });
+        card.querySelector('[data-action="plus5"]').addEventListener("click", (e)=>{ e.stopPropagation(); applyDelta(p.id, 5); });
+        playerCards.appendChild(card);
+      });
+
+      const ranked = [...state.players].sort((a,b)=>b.score-a.score);
+      ranking.innerHTML = "";
+      ranked.forEach((p, i)=>{
+        const row = document.createElement("div");
+        row.className = "rank-row";
+        row.innerHTML = `<div>${i+1}. ${p.name}</div><div>${p.score}</div>`;
+        ranking.appendChild(row);
+      });
+
+      historyEl.innerHTML = "";
+      if(!state.history.length){
+        const row = document.createElement("div");
+        row.className = "history-row";
+        row.style.color = "var(--muted)";
+        row.textContent = "Nog geen acties.";
+        historyEl.appendChild(row);
+      } else {
+        state.history.forEach(h=>{
+          const row = document.createElement("div");
+          row.className = "history-row";
+          row.textContent = h.text;
+          historyEl.appendChild(row);
+        });
+      }
+
+      if(state.winnerId){
+        const w = state.players.find(p=>p.id===state.winnerId);
+        winnerBanner.textContent = `🏆 ${w.name} heeft gewonnen met ${w.score} punten.`;
+        winnerBanner.classList.remove("hidden");
+      } else {
+        winnerBanner.classList.add("hidden");
+      }
+
+      lastHeard.textContent = `Laatst gehoord: ${state.lastVoiceText || "-"}`;
+    }
+
+    function buildRecognition(){
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if(!SpeechRecognition){
+        state.voiceSupported = false;
+        voiceBadge.textContent = "Spraak niet ondersteund";
+        voiceBtn.disabled = true;
+        voiceStatus.textContent = "Spraakinvoer wordt in deze browser niet ondersteund.";
+        return;
+      }
+      state.voiceSupported = true;
+      voiceBadge.textContent = "Spraak beschikbaar";
+      const recognition = new SpeechRecognition();
+      recognition.lang = "nl-NL";
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = ()=>{
+        state.isListening = true;
+        voiceBtn.textContent = "Luistert...";
+        voiceStatus.textContent = "Zeg bijvoorbeeld: Henk plus 5";
+      };
+      recognition.onend = ()=>{
+        state.isListening = false;
+        voiceBtn.textContent = "Gebruik steminvoer";
+      };
+      recognition.onerror = ()=>{
+        state.isListening = false;
+        voiceBtn.textContent = "Gebruik steminvoer";
+        voiceStatus.textContent = "Spraakinvoer mislukte. Probeer opnieuw.";
+      };
+      recognition.onresult = (event)=>{
+        const transcript = event.results?.[0]?.[0]?.transcript || "";
+        state.lastVoiceText = transcript;
+        const parsed = parseVoiceCommand(transcript);
+        if(!parsed.ok){
+          voiceStatus.textContent = parsed.message;
+          renderGame();
+          return;
+        }
+        if(parsed.type === "set"){
+          setScore(parsed.playerId, parsed.value, `Stem: ${transcript}`);
+        } else {
+          applyDelta(parsed.playerId, parsed.delta, `Stem: ${transcript}`);
+        }
+        voiceStatus.textContent = "Spraakopdracht verwerkt.";
+        renderGame();
+      };
+      state.recognition = recognition;
+    }
+
+    function resetGameScores(){
+      state.players.forEach(p=>p.score=0);
+      state.history = [];
+      state.winnerId = null;
+      state.lastVoiceText = "";
+      voiceStatus.textContent = "Scores gereset.";
+      renderGame();
+    }
+
+    playerCountInput.addEventListener("input", ()=>{
+      const count = Math.max(1, Math.min(12, Number(playerCountInput.value) || 1));
+      state.players = makePlayers(count);
+      renderPlayerInputs();
+    });
+
+    startBtn.addEventListener("click", ()=>{
+      state.targetScore = Math.max(1, Number(targetScoreInput.value) || 1);
+      state.players = state.players.map((p, i)=>({
+        ...p,
+        name: (p.name || "").trim() || `Speler ${i+1}`,
+        score: 0
+      }));
+      state.selectedPlayerId = state.players[0]?.id || null;
+      state.history = [];
+      state.winnerId = null;
+      setupScreen.classList.add("hidden");
+      gameScreen.classList.remove("hidden");
+      renderGame();
+    });
+
+    settingsBtn.addEventListener("click", ()=>{
+      gameScreen.classList.add("hidden");
+      setupScreen.classList.remove("hidden");
+    });
+
+    minusManualBtn.addEventListener("click", ()=>{
+      const value = Math.abs(Number(manualPoints.value) || 0);
+      applyDelta(state.selectedPlayerId, -value);
+    });
+
+    plusManualBtn.addEventListener("click", ()=>{
+      const value = Math.abs(Number(manualPoints.value) || 0);
+      applyDelta(state.selectedPlayerId, value);
+    });
+
+    undoBtn.addEventListener("click", ()=>{
+      const item = state.history.shift();
+      if(!item || !item.undoData) return renderGame();
+      if("setBackTo" in item.undoData){
+        const p = state.players.find(x=>x.id===item.undoData.playerId);
+        if(p) p.score = item.undoData.setBackTo;
+      } else {
+        const p = state.players.find(x=>x.id===item.undoData.playerId);
+        if(p) p.score = Math.max(0, p.score + item.undoData.delta);
+      }
+      evaluateWinner();
+      renderGame();
+    });
+
+    resetBtn.addEventListener("click", ()=>{
+      if(confirm("Alle scores resetten?")) resetGameScores();
+    });
+
+    voiceBtn.addEventListener("click", ()=>{
+      if(!state.recognition || state.isListening || state.winnerId) return;
+      state.recognition.start();
+    });
+
+    state.players = makePlayers(4);
+    renderPlayerInputs();
+    buildRecognition();
+  </script>
+</body>
+</html>
