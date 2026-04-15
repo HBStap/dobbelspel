@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dobbelspel Puntenteller v6</title>
+  <style>
+    :root{
+      --bg:#f4f6f8;--card:#fff;--text:#1f2937;--muted:#6b7280;--line:#e5e7eb;
+      --accent:#111827;--danger:#dc2626;--danger-dark:#b91c1c;--soft-red:#fee2e2;--blue:#2563eb;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    .wrap{max-width:1100px;margin:0 auto;padding:16px}
+    .card{background:var(--card);border-radius:22px;box-shadow:0 8px 24px rgba(0,0,0,.08);padding:18px;margin-bottom:16px}
+    h1,h2,h3,p{margin:0}
+    .sub{color:var(--muted);margin-top:6px}
+    .grid{display:grid;gap:14px}
+    .grid-2{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+    .grid-players{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+    label{display:block;font-weight:600;margin-bottom:6px}
+    input[type=text],input[type=number]{width:100%;height:48px;padding:10px 14px;border:1px solid var(--line);border-radius:14px;font-size:18px;background:#fff}
+    button{border:0;border-radius:16px;padding:14px 18px;font-size:18px;font-weight:700;cursor:pointer}
+    .btn{background:var(--accent);color:#fff}
+    .btn-outline{background:#fff;border:1px solid var(--line);color:var(--text)}
+    .btn-danger{background:#fee2e2;color:#991b1b}
+    .subtle-btn{background:#f8fafc;color:#475569;border:1px solid var(--line);font-size:15px;padding:10px 14px;border-radius:14px}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap}
+    .badge{display:inline-block;padding:8px 12px;border-radius:999px;background:#eef2ff;color:#1e3a8a;font-size:14px;font-weight:700}
+    .player-card{border:2px solid transparent;border-radius:22px;padding:16px;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.06)}
+    .player-card.selected{border-color:#94a3b8}
+    .player-card.winner{border-color:#22c55e;background:#f0fdf4}
+    .player-name{font-size:28px;font-weight:800;line-height:1.1}
+    .score{font-size:58px;font-weight:900;margin:10px 0 8px}
+    .layout{display:grid;gap:16px;grid-template-columns:1.6fr .9fr}
+    .rank-row,.history-row{background:#f8fafc;border-radius:16px;padding:12px 14px}
+    .rank-row{display:flex;justify-content:space-between;align-items:center;font-size:18px;font-weight:700}
+    .history{max-height:280px;overflow:auto;display:grid;gap:8px}
+    .voice-box{background:#f8fafc;border-radius:16px;padding:12px;color:var(--muted);font-size:15px}
+    .topline{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+    .winner-banner{background:#ecfdf5;color:#166534;padding:14px 16px;border-radius:18px;font-size:20px;font-weight:800;margin-bottom:14px}
+    .winner-summary{margin-top:12px;background:#fff;border:1px solid #bbf7d0;border-radius:18px;padding:14px;color:#14532d}
+    .winner-summary h3{margin:0 0 10px 0;font-size:20px;color:#166534}
+    .winner-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;background:#f0fdf4;margin-top:8px;font-weight:700}
+    .hidden{display:none!important}
+    .toggle-row{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--soft-red);border-radius:16px;color:#7f1d1d;font-weight:700}
+    .toggle-row input[type=checkbox]{width:22px;height:22px;accent-color:var(--danger)}
+    .player-last{margin-top:10px;display:grid;gap:6px}
+    .last-chip{background:#f8fafc;border-radius:12px;padding:8px 10px;font-size:14px;color:var(--muted)}
+    .last-chip strong{color:var(--text)}
+    .voice-btn{width:100%;min-height:84px;font-size:24px;border-radius:22px;background:var(--danger);color:#fff}
+    .voice-btn.listening{background:var(--danger-dark);box-shadow:0 0 0 5px rgba(220,38,38,.15)}
+    .fab{position:fixed;right:16px;z-index:9999;color:#fff;border-radius:999px;padding:16px 18px;font-size:18px;font-weight:800;box-shadow:0 10px 24px rgba(0,0,0,.2)}
+    .undo-fab{bottom:152px;background:#111827}
+    .voice-fab{bottom:84px;background:var(--danger);min-width:72px}
+    .voice-fab.listening{background:var(--danger-dark)}
+    .help-fab{bottom:16px;background:var(--blue)}
+    @media (max-width:860px){.layout{grid-template-columns:1fr}.score{font-size:52px}.player-name{font-size:24px}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section id="setupScreen" class="card">
+      <h1>Dobbelspel puntenteller</h1>
+      <p class="sub">Versie 6, opgeschoond en opnieuw opgebouwd.</p>
+      <div class="grid grid-2" style="margin-top:16px">
+        <div><label for="playerCount">Aantal spelers</label><input id="playerCount" type="number" min="1" max="12" value="4"></div>
+        <div><label for="targetScore">Te behalen punten</label><input id="targetScore" type="number" min="1" value="10000"></div>
+      </div>
+      <div style="margin-top:16px">
+        <label>Spelers</label>
+        <div id="playerInputs" class="grid grid-players"></div>
+      </div>
+      <div class="toolbar" style="margin-top:16px">
+        <button class="btn" id="startBtn">Start spel</button>
+        <span class="badge" id="voiceBadge">Spraak controleren...</span>
+      </div>
+      <div class="card" style="margin-top:16px; margin-bottom:0; box-shadow:none; border:1px solid var(--line);">
+        <h3>Voorbeelden steminvoer</h3>
+        <p class="sub" style="margin-top:8px">“Henk plus 5”, “Alie min 3”, “Jannie 12”, “Angela zet op 50”</p>
+      </div>
+    </section>
+
+    <section id="gameScreen" class="hidden">
+      <div id="winnerBanner" class="winner-banner hidden"></div>
+      <div id="winnerSummary" class="winner-summary hidden"></div>
+
+      <div class="card">
+        <div class="topline">
+          <div>
+            <h2 id="goalLabel">Doel: 10000 punten</h2>
+            <p class="sub">Tik op een speler of gebruik de microfoon.</p>
+          </div>
+          <div class="toolbar">
+            <button class="btn-outline" id="settingsBtn">Instellingen</button>
+            <button class="btn-danger" id="resetBtn">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="layout">
+        <div><div id="playerCards" class="grid grid-players"></div></div>
+        <div class="grid">
+          <div class="card">
+            <h3>Snelle invoer</h3>
+            <p class="sub" style="margin-top:6px">Geselecteerde speler: <strong id="selectedName">-</strong></p>
+            <div style="margin-top:14px">
+              <label for="manualPoints">Punten</label>
+              <input id="manualPoints" type="number" value="5">
+            </div>
+            <div class="grid grid-2" style="margin-top:14px">
+              <button class="btn" id="plusManualBtn">Optellen</button>
+              <button class="subtle-btn" id="minusManualBtn">Correctie -</button>
+            </div>
+            <div style="margin-top:14px" class="toggle-row">
+              <input type="checkbox" id="listenMode">
+              <label for="listenMode" style="margin:0;">Luistermodus aan</label>
+            </div>
+            <div style="margin-top:14px">
+              <button class="voice-btn" id="voiceBtn">🎤 Start steminvoer</button>
+              <div class="voice-box" id="voiceStatus" style="margin-top:10px">Zeg bijvoorbeeld: “Alie plus 5”.</div>
+              <div class="voice-box" id="lastHeard" style="margin-top:10px">Laatst gehoord: -</div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Stand</h3>
+            <div id="ranking" class="grid" style="margin-top:12px"></div>
+          </div>
+          <div class="card">
+            <h3>Laatste acties</h3>
+            <div id="history" class="history" style="margin-top:12px"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <button class="fab undo-fab" id="undoFab">↶ Undo</button>
+  <button class="fab voice-fab" id="voiceFab">🎤</button>
+  <button class="fab help-fab" onclick="window.open('dobbelspel_uitleg.html','_blank')">Uitleg</button>
+
+<script>
+function uid(){return Math.random().toString(36).slice(2,9)}
+function normalizeText(text){return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/-/g," ").replace(/\s+/g," ").trim()}
+function wordToNumber(word){const map={nul:0,een:1,twee:2,drie:3,vier:4,vijf:5,zes:6,zeven:7,acht:8,negen:9,tien:10,elf:11,twaalf:12,dertien:13,veertien:14,vijftien:15,zestien:16,zeventien:17,achttien:18,negentien:19,twintig:20};return map[word]}
+function extractValue(text){const m=text.match(/-?\d+/);if(m)return Number(m[0]);for(const w of text.split(" ")){const n=wordToNumber(w);if(n!==undefined)return n}return null}
+function levenshtein(a,b){const m=a.length,n=b.length,dp=Array.from({length:m+1},()=>Array(n+1).fill(0));for(let i=0;i<=m;i++)dp[i][0]=i;for(let j=0;j<=n;j++)dp[0][j]=j;for(let i=1;i<=m;i++){for(let j=1;j<=n;j++){const c=a[i-1]===b[j-1]?0:1;dp[i][j]=Math.min(dp[i-1][j]+1,dp[i][j-1]+1,dp[i-1][j-1]+c)}}return dp[m][n]}
+function similarity(a,b){const d=levenshtein(a,b);return 1-d/Math.max(a.length,b.length,1)}
+function nameVariants(name){const base=normalizeText(name),v=new Set([base]);if(base.endsWith("ie"))v.add(base.slice(0,-2)+"i");if(base.endsWith("ia"))v.add(base.slice(0,-1));if(base.includes("ij"))v.add(base.replace(/ij/g,"y"));return [...v].filter(Boolean)}
+
+const state={targetScore:10000,players:[],selectedPlayerId:null,history:[],winnerId:null,lastVoiceText:"",recognition:null,voiceSupported:false,isListening:false,listenMode:false,restartTimer:null};
+const setupScreen=document.getElementById("setupScreen"),gameScreen=document.getElementById("gameScreen"),playerCountInput=document.getElementById("playerCount"),targetScoreInput=document.getElementById("targetScore"),playerInputsWrap=document.getElementById("playerInputs"),startBtn=document.getElementById("startBtn"),voiceBadge=document.getElementById("voiceBadge"),goalLabel=document.getElementById("goalLabel"),playerCards=document.getElementById("playerCards"),ranking=document.getElementById("ranking"),historyEl=document.getElementById("history"),selectedName=document.getElementById("selectedName"),manualPoints=document.getElementById("manualPoints"),minusManualBtn=document.getElementById("minusManualBtn"),plusManualBtn=document.getElementById("plusManualBtn"),voiceBtn=document.getElementById("voiceBtn"),voiceStatus=document.getElementById("voiceStatus"),lastHeard=document.getElementById("lastHeard"),resetBtn=document.getElementById("resetBtn"),settingsBtn=document.getElementById("settingsBtn"),winnerBanner=document.getElementById("winnerBanner"),winnerSummary=document.getElementById("winnerSummary"),listenModeCheckbox=document.getElementById("listenMode"),voiceFab=document.getElementById("voiceFab"),undoFab=document.getElementById("undoFab");
+
+const dutchNames = ["Jan","Piet","Klaas","Henk","Kees","Anja","Sanne","Marieke","Jeroen","Bram","Lisa","Tim","Eva","Ruben"];
+function makePlayers(count){return Array.from({length:count},(_,i)=>({id:uid(),name:dutchNames[i%dutchNames.length],score:0,lastChanges:[]}))}
+function renderPlayerInputs(){
+  playerInputsWrap.innerHTML="";
+  state.players.forEach((p,index)=>{
+    const row=document.createElement("div");
+    const lab=document.createElement("label");
+    lab.textContent="Speler "+(index+1);
+    const inp=document.createElement("input");
+    inp.type="text";
+    inp.value=p.name;
+    inp.addEventListener("input",e=>{p.name=e.target.value});
+    row.appendChild(lab); row.appendChild(inp); playerInputsWrap.appendChild(row);
+  });
+}
+function setSelectedPlayer(id){state.selectedPlayerId=id;renderGame()}
+function stopAutoRestart(){clearTimeout(state.restartTimer);state.restartTimer=null}
+function evaluateWinner(){const w=state.players.find(p=>p.score>=state.targetScore);state.winnerId=w?w.id:null;if(state.winnerId)stopAutoRestart()}
+function pushPlayerChange(player,label){player.lastChanges.unshift(label);player.lastChanges=player.lastChanges.slice(0,2)}
+function addHistory(text,undoData){state.history.unshift({id:uid(),text,undoData});renderGame()}
+function applyDelta(playerId,delta,source){
+  if(state.winnerId)return;
+  const p=state.players.find(x=>x.id===playerId); if(!p)return;
+  const oldScore=p.score;
+  p.score=Math.max(0,p.score+delta);
+  pushPlayerChange(p,(delta>=0?"+":"")+delta);
+  evaluateWinner();
+  addHistory((source||"Handmatig")+": "+p.name+" "+((delta>=0?"+":"")+delta)+" ("+oldScore+" → "+p.score+")",{playerId:playerId,delta:-delta});
+}
+function setScore(playerId,value,source){
+  if(state.winnerId)return;
+  const p=state.players.find(x=>x.id===playerId); if(!p)return;
+  const oldScore=p.score;
+  p.score=Math.max(0,value);
+  pushPlayerChange(p,"= "+p.score);
+  evaluateWinner();
+  addHistory((source||"Stem")+": "+p.name+" score gezet ("+oldScore+" → "+p.score+")",{playerId:playerId,setBackTo:oldScore});
+}
+function findBestPlayerMatch(text){
+  const normalizedText=normalizeText(text),words=normalizedText.split(" ").filter(Boolean); let best=null;
+  for(const player of state.players){
+    for(const variant of nameVariants(player.name)){
+      if(normalizedText.includes(variant)) return {player:player,score:1};
+      for(const word of words){
+        const score=similarity(word,variant);
+        if(!best||score>best.score) best={player:player,score:score};
+      }
+    }
+  }
+  return best&&best.score>=0.66?best:null;
+}
+function parseVoiceCommand(transcript){
+  const text=normalizeText(transcript),value=extractValue(text);
+  if(value===null)return {ok:false,message:"Ik hoorde geen getal."};
+  const match=findBestPlayerMatch(text);
+  if(!match)return {ok:false,message:"Ik herkende geen spelersnaam."};
+  const isMinus=/\b(min|minus|eraf|af|verminder)\b/.test(text);
+  const isPlus=/\b(plus|erbij|toevoegen|optellen)\b/.test(text);
+  const isSet=/\b(zet op|set|maak)\b/.test(text);
+  if(isSet) return {ok:true,type:"set",playerId:match.player.id,value:Math.max(0,value)};
+  if(isMinus) return {ok:true,type:"add",playerId:match.player.id,delta:-Math.abs(value)};
+  if(isPlus) return {ok:true,type:"add",playerId:match.player.id,delta:Math.abs(value)};
+  return {ok:true,type:"add",playerId:match.player.id,delta:Math.abs(value)};
+}
+function updateVoiceButtons(){
+  if(state.isListening){
+    voiceBtn.textContent="🎤 Luistert...";
+    voiceBtn.classList.add("listening");
+    voiceFab.textContent="🎤…";
+    voiceFab.classList.add("listening");
+  }else{
+    voiceBtn.textContent=state.listenMode?"🎤 Luistermodus actief":"🎤 Start steminvoer";
+    voiceBtn.classList.remove("listening");
+    voiceFab.textContent=state.listenMode?"🎤 Aan":"🎤";
+    voiceFab.classList.remove("listening");
+  }
+  const disabled=!state.voiceSupported||!!state.winnerId;
+  voiceBtn.disabled=disabled;
+  voiceFab.disabled=disabled;
+  undoFab.disabled=state.history.length===0;
+}
+function renderGame(){
+  goalLabel.textContent="Doel: "+state.targetScore+" punten";
+  const selected=state.players.find(p=>p.id===state.selectedPlayerId);
+  selectedName.textContent=selected?selected.name:"-";
+  listenModeCheckbox.checked=state.listenMode;
+
+  playerCards.innerHTML="";
+  state.players.forEach(p=>{
+    const winner=state.winnerId===p.id, selectedCls=state.selectedPlayerId===p.id?"selected":"", winnerCls=winner?"winner":"";
+    const card=document.createElement("div");
+    card.className="player-card "+selectedCls+" "+winnerCls;
+    const lastHtml=p.lastChanges.length?p.lastChanges.map(x=>'<div class="last-chip">Laatste: <strong>'+x+'</strong></div>').join(""):'<div class="last-chip">Nog geen toevoegingen</div>';
+    card.innerHTML='<div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start"><div><div style="color:var(--muted);font-size:16px">Speler</div><div class="player-name">'+p.name+'</div></div>'+(winner?'<span class="badge" style="background:#dcfce7;color:#166534">Winnaar</span>':'')+'</div><div class="score">'+p.score+'</div><div class="player-last">'+lastHtml+'</div>';
+    card.addEventListener("click",()=>setSelectedPlayer(p.id));
+    playerCards.appendChild(card);
+  });
+
+  ranking.innerHTML="";
+  [...state.players].sort((a,b)=>b.score-a.score).forEach((p,i)=>{
+    const row=document.createElement("div");
+    row.className="rank-row";
+    row.innerHTML="<div>"+(i+1)+". "+p.name+"</div><div>"+p.score+"</div>";
+    ranking.appendChild(row);
+  });
+
+  historyEl.innerHTML="";
+  if(!state.history.length){
+    const row=document.createElement("div");
+    row.className="history-row";
+    row.style.color="var(--muted)";
+    row.textContent="Nog geen acties.";
+    historyEl.appendChild(row);
+  }else{
+    state.history.forEach(h=>{
+      const row=document.createElement("div");
+      row.className="history-row";
+      row.textContent=h.text;
+      historyEl.appendChild(row);
+    });
+  }
+
+  if(state.winnerId){
+    const w=state.players.find(p=>p.id===state.winnerId);
+    winnerBanner.textContent="🏆 "+w.name+" heeft gewonnen met "+w.score+" punten.";
+    winnerBanner.classList.remove("hidden");
+    const ordered=[...state.players].sort((a,b)=>b.score-a.score);
+    winnerSummary.innerHTML="<h3>Eindstand</h3>"+ordered.map((p,i)=>'<div class="winner-row"><div>'+(i+1)+". "+p.name+'</div><div>'+p.score+'</div></div>').join("");
+    winnerSummary.classList.remove("hidden");
+  }else{
+    winnerBanner.classList.add("hidden");
+    winnerSummary.classList.add("hidden");
+    winnerSummary.innerHTML="";
+  }
+
+  lastHeard.textContent="Laatst gehoord: "+(state.lastVoiceText||"-");
+  updateVoiceButtons();
+}
+function queueRestartListening(){stopAutoRestart();if(!state.listenMode||!state.voiceSupported||state.isListening||state.winnerId)return;state.restartTimer=setTimeout(()=>tryStartListening(),600)}
+function tryStartListening(){if(!state.recognition||state.isListening||state.winnerId)return;try{state.recognition.start()}catch(e){}}
+function buildRecognition(){
+  const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SpeechRecognition){
+    state.voiceSupported=false;
+    voiceBadge.textContent="Spraak niet ondersteund";
+    voiceStatus.textContent="Spraakinvoer wordt in deze browser niet ondersteund.";
+    updateVoiceButtons();
+    return;
+  }
+  state.voiceSupported=true;
+  voiceBadge.textContent="Spraak beschikbaar";
+  const recognition=new SpeechRecognition();
+  recognition.lang="nl-NL";
+  recognition.continuous=false;
+  recognition.interimResults=false;
+  recognition.maxAlternatives=1;
+  recognition.onstart=()=>{state.isListening=true;voiceStatus.textContent=state.listenMode?"Luistermodus actief...":"Luistert...";updateVoiceButtons()};
+  recognition.onend=()=>{state.isListening=false;updateVoiceButtons();if(state.listenMode&&!state.winnerId)queueRestartListening()};
+  recognition.onerror=()=>{state.isListening=false;updateVoiceButtons();voiceStatus.textContent="Spraakinvoer mislukte. Probeer opnieuw.";if(state.listenMode&&!state.winnerId)queueRestartListening()};
+  recognition.onresult=(event)=>{
+    const transcript=(event.results&&event.results[0]&&event.results[0][0]&&event.results[0][0].transcript)||"";
+    state.lastVoiceText=transcript;
+    const parsed=parseVoiceCommand(transcript);
+    if(!parsed.ok){voiceStatus.textContent=parsed.message;renderGame();return}
+    if(parsed.type==="set") setScore(parsed.playerId,parsed.value,"Stem: "+transcript);
+    else applyDelta(parsed.playerId,parsed.delta,"Stem: "+transcript);
+    voiceStatus.textContent="Spraakopdracht verwerkt.";
+    renderGame();
+  };
+  state.recognition=recognition;
+  updateVoiceButtons();
+}
+function resetGameScores(){
+  state.players.forEach(p=>{p.score=0;p.lastChanges=[]});
+  state.history=[]; state.winnerId=null; state.lastVoiceText="";
+  voiceStatus.textContent="Scores gereset.";
+  renderGame();
+  if(state.listenMode)queueRestartListening();
+}
+function undoLast(){
+  const item=state.history.shift();
+  if(!item||!item.undoData){renderGame();return}
+  const p=state.players.find(x=>x.id===item.undoData.playerId);
+  if(p){
+    if(Object.prototype.hasOwnProperty.call(item.undoData,"setBackTo")) p.score=item.undoData.setBackTo;
+    else p.score=Math.max(0,p.score+item.undoData.delta);
+    p.lastChanges.shift();
+  }
+  state.winnerId=null;
+  evaluateWinner();
+  renderGame();
+}
+
+playerCountInput.addEventListener("input",()=>{
+  const count=Math.max(1,Math.min(12,Number(playerCountInput.value)||1));
+  state.players=makePlayers(count);
+  renderPlayerInputs();
+});
+startBtn.addEventListener("click",()=>{
+  state.targetScore=Math.max(1,Number(targetScoreInput.value)||1);
+  state.players=state.players.map((p,i)=>({id:p.id,name:(p.name||"").trim()||("Speler "+(i+1)),score:0,lastChanges:[]}));
+  state.selectedPlayerId=state.players[0]?state.players[0].id:null;
+  state.history=[]; state.winnerId=null;
+  setupScreen.classList.add("hidden");
+  gameScreen.classList.remove("hidden");
+  renderGame();
+});
+settingsBtn.addEventListener("click",()=>{stopAutoRestart();setupScreen.classList.remove("hidden");gameScreen.classList.add("hidden");renderPlayerInputs();});
+plusManualBtn.addEventListener("click",()=>applyDelta(state.selectedPlayerId,Math.abs(Number(manualPoints.value)||0),"Handmatig"));
+minusManualBtn.addEventListener("click",()=>applyDelta(state.selectedPlayerId,-Math.abs(Number(manualPoints.value)||0),"Handmatig"));
+resetBtn.addEventListener("click",()=>{if(confirm("Alle scores resetten?"))resetGameScores()});
+listenModeCheckbox.addEventListener("change",()=>{
+  state.listenMode=listenModeCheckbox.checked;
+  voiceStatus.textContent=state.listenMode?"Luistermodus ingeschakeld.":"Luistermodus uit.";
+  renderGame();
+  if(state.listenMode)queueRestartListening(); else stopAutoRestart();
+});
+voiceBtn.addEventListener("click",()=>tryStartListening());
+voiceFab.addEventListener("click",()=>tryStartListening());
+undoFab.addEventListener("click",()=>undoLast());
+
+state.players=makePlayers(4);
+renderPlayerInputs();
+buildRecognition();
+</script>
+</body>
+</html>
